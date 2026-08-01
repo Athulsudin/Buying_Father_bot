@@ -17,7 +17,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 
 # ⚠️ --- ENTER YOUR CONFIGURATION HERE ---
-API_TOKEN = '8872819368:AAHeJ07cyTc-2bDBm9mR-s7IHW31hfk8jgI'
+API_TOKEN = '8642149587:AAEQCxPaeUE_-rgXQ9ZeHxaWhAZqXVwWveQ'
   # Replace with your Bot token from BotFather
 ADMIN_ID = 7616127905
               # Replace with your Telegram User ID
