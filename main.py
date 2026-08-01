@@ -386,8 +386,7 @@ async def get_admin_time(msg: types.Message, state: FSMContext):
             await bot.edit_message_text(f"✅ **Order Approved** | Delivery Time: {custom_time}", ADMIN_ID, orig_msg_id)
         except Exception:
             pass
-        async def finish_and_delete():
-        # Parse custom time given by admin
+                async def finish_and_delete():
         delay_seconds = 60
         try:
             t_str = custom_time.strip().lower()
@@ -421,6 +420,7 @@ async def get_admin_time(msg: types.Message, state: FSMContext):
             delay_seconds = 60
 
         await asyncio.sleep(delay_seconds)
+
 
             completed_time_ist = datetime.now(IST).strftime('%Y-%m-%d %H:%M')
             admin_completion_notice = (
