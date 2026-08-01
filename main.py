@@ -27,7 +27,7 @@ def keep_alive():
     t.start()
 
 # --- Configurations ---
-API_TOKEN = '8642149587:AAE_RjrUc-ChnNAIgYXoeuqgHdHgelPEvOo'
+API_TOKEN = '8642149587:AAG6RS5Zz-rdNLcl22D7GjiWdAmdypcoxbM'
 ADMIN_ID = 7616127905
 QR_URL = 'https://ibb.co/kg2jT6ZF'
 
