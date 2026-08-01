@@ -416,10 +416,7 @@ async def get_admin_time(msg: types.Message, state: FSMContext):
             delay_seconds = 60
         await asyncio.sleep(delay_seconds)
 
-
-
-
-            completed_time_ist = datetime.now(IST).strftime('%Y-%m-%d %H:%M')
+        completed_time_ist = datetime.now(IST).strftime('%Y-%m-%d %H:%M')
             admin_completion_notice = (
                 "━━━━━━━━━━━━━━━━━━\n"
                 "✅ **ORDER COMPLETED NOTIFICATION**\n"
