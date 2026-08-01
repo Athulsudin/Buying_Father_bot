@@ -1,197 +1,353 @@
-from flask import Flask
-import threading
 import os
-app = Flask('')
-@app.route('/')
-def home():
-    return "Bot is Alive!"
-
-def keep_alive():
-    port = int(os.environ.get('PORT', 10000))
-    t = threading.Thread(target=lambda: app.run(host='0.0.0.0', port=port))
-    t.start()
-# ==============================================================================
-# 📌 PROJECT: INSTAGRAM SMM BOT (OWNER BOT ARCHITECTURE)
-# ⚙️ HOSTING MODE: 24/7 FREE HOSTING COMPATIBLE (KOYEB / RENDER / RAILWAY)
-# 📝 DESCRIPTION: 
-#    This bot handles automated SMM orders (Bot Followers, Real Followers, Likes)
-#    using Inline Buttons. It includes an Admin Approval System, automated 
-#    Receipt Box creation, and background Delay-Timers that automatically 
-#    delete payment chat history and send a Completion Message after delivery.
-# ==============================================================================
-
 import asyncio
+import threading
+from flask import Flask
 from datetime import datetime
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram import executor
 
-# ⚠️ --- ENTER YOUR CONFIGURATION HERE ---
-API_TOKEN = '8642149587:AAEQCxPaeUE_-rgXQ9ZeHxaWhAZqXVwWveQ'
-  # Replace with your Bot token from BotFather
+# --- Flask Server for 24/7 Uptime (Render / Keep Alive) ---
+app = Flask('')
+@app.route('/')
+def home(): return "Bot is Alive!"
+
+def keep_alive():
+    port = int(os.environ.get('PORT', 10000))
+    threading.Thread(target=lambda: app.run(host='0.0.0.0', port=port)).start()
+
+# --- Configurations ---
+API_TOKEN = '8642149587:AAEQCxPaEUe_-rgXQZeHxawhAZqXWwVveQ'
 ADMIN_ID = 7616127905
-              # Replace with your Telegram User ID
-QR_CODE_URL = 'https://ibb.co/kg2jT6ZF'
-
-
-  # Replace with your QR code image link
-# --------------------------------------------------
+QR_URL = 'https://ibb.co/kg2jT6ZF'
 
 bot = Bot(token=API_TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 
 class OrderStates(StatesGroup):
-    waiting_for_payment = State()
+    wait_quantity = State()
+    wait_payment_and_url = State()
+    wait_admin_time = State()
+    in_support = State()
 
-# Service Configuration and Delivery Duration (in seconds)
 SERVICES = {
-    "bot": {"name": "🤖 Bot Followers", "time": "2 Hours and 45 Minutes", "delay": 9900},
-    "real": {"name": "🔥 Real Followers", "time": "7 Hours and 8 Minutes", "delay": 25680},
-    "likes": {"name": "❤️ Likes", "time": "3 Hours and 18 Minutes", "delay": 11880}
+    "bot": {"name": "🤖 Bot Followers"},
+    "real": {"name": "🔥 Real Followers"},
+    "likes": {"name": "❤️ Likes"}
 }
 
-def get_main_menu():
-    keyboard = InlineKeyboardMarkup(row_width=1)
-    keyboard.add(
-        InlineKeyboardButton("🤖 Bot Followers", callback_data="menu_bot"),
-        InlineKeyboardButton("🔥 Real Followers", callback_data="menu_real"),
-        InlineKeyboardButton("❤️ Likes", callback_data="menu_likes")
-    )
-    return keyboard
+def menu_keyboard():
+    kb = InlineKeyboardMarkup(row_width=1)
+    for k, v in SERVICES.items():
+        kb.add(
+            InlineKeyboardButton(v['name'], callback_data=f"m_{k}"),
+            InlineKeyboardButton("📌 More", callback_data=f"more_{k}")
+        )
+    kb.add(InlineKeyboardButton("💬 Chat to Admin", callback_data="chat_admin"))
+    return kb
 
 @dp.message_handler(commands=['start'])
-async def send_welcome(message: types.Message):
-    welcome_text = (
-        "🚀 Welcome to Owner Bot 🌟\n\n"
-        "🥃 Hey! Thanks for reaching out.\n\n"
-        "❗️ I’m currently busy or offline at the moment.\n"
-        "✉️ Please leave your message, and I’ll respond as soon as I’m available.\n\n"
-        "⏳ Your patience is greatly appreciated.\n"
-        "━━━━━━━━━━━━━━━\n\n"
-        "📣 𝗨𝗣𝗗𝗔𝗧Ｅ𝖘 & 𝗣𝗥ＩＣＥ 𝗟ＩＳ𝐓\n\n"
-        "➡️ @Bot_Owner_Official\n\n"
-        "━━━━━━━━━━━━━━━\n\n"
-        "✅ Latest Updates\n"
-        "✅ Service Information\n"
-        "✅ Price List\n"
-        "✅ New Announcements\n\n"
-        "⚪️ Thanks for contacting Owner Bot\n"
-        "🦁 Have a great day!"
+async def start(msg: types.Message, state: FSMContext):
+    if msg.from_user.id == ADMIN_ID: return
+    await state.finish()
+    await msg.answer("✨ **Welcome to Our Service Bot!**\n\nPlease choose a service or contact support below:", reply_markup=menu_keyboard())
+
+# --- Service Selection Handler ---
+@dp.callback_query_handler(lambda c: c.data.startswith('m_'))
+async def svc(cq: types.CallbackQuery, state: FSMContext):
+    await cq.answer()
+    s_type = cq.data.split('_')[1]
+    await OrderStates.wait_quantity.set()
+    await state.update_data(service=s_type)
+    await bot.send_message(cq.from_user.id, f"🛒 **Selected Service:** {SERVICES[s_type]['name']}\n\nPlease enter your required quantity (e.g., 500, 1000):")
+
+# --- More Button Handler ---
+@dp.callback_query_handler(lambda c: c.data.startswith('more_'))
+async def more_options(cq: types.CallbackQuery, state: FSMContext):
+    await cq.answer()
+    await OrderStates.in_support.set()
+    
+    cancel_kb = InlineKeyboardMarkup(row_width=1)
+    cancel_kb.add(InlineKeyboardButton("❌ Close Support", callback_data="cancel_support"))
+    
+    await bot.send_message(
+        cq.from_user.id,
+        "💬 **Please direct contact admin**\n\n"
+        "You can send your queries here, and our admin will assist you shortly.\n\n"
+        "Click the button below when you want to return.",
+        reply_markup=cancel_kb
     )
-    await message.answer(welcome_text, reply_markup=get_main_menu())
 
-@dp.callback_query_handler(lambda c: c.data.startswith('menu_'))
-async def show_sub_menu(callback_query: types.CallbackQuery):
-    service_type = callback_query.data.split('_')[1]
-    keyboard = InlineKeyboardMarkup(row_width=2)
+# --- Main Menu 'Chat to Admin' Button Handler ---
+@dp.callback_query_handler(lambda c: c.data == 'chat_admin')
+async def start_support(cq: types.CallbackQuery, state: FSMContext):
+    await cq.answer()
+    await OrderStates.in_support.set()
     
-    if service_type == "bot":
-        text = "🔹 [ 🤖 Bot Followers ] (Low Speed ⏰ | No refill 🚫 | Delivery Time: 2 Hours and 45 Minutes):"
-        prices = [("1k Bot — ₹49", "49"), ("2k Bot — ₹79", "79"), ("3k Bot — ₹100", "100"), 
-                  ("4k Bot — ₹120", "120"), ("5k Bot — ₹140", "140"), ("6k Bot — ₹160", "160"),
-                  ("7k Bot — ₹180", "180"), ("8k Bot — ₹200", "200"), ("9k Bot — ₹220", "220"), ("10k Bot — ₹250", "250")]
-    elif service_type == "real":
-        text = "🔹 [ 🔥 Real Followers ] (Fast Delivery ⏰ | Refill 💵 | Delivery Time: 7 Hours and 8 Minutes):"
-        prices = [("1k Real — ₹100", "100"), ("2k Real — ₹145", "145"), ("3k Real — ₹195", "195"), 
-                  ("4k Real — ₹245", "245"), ("5k Real — ₹290", "290")]
+    cancel_kb = InlineKeyboardMarkup(row_width=1)
+    cancel_kb.add(InlineKeyboardButton("❌ Close Support", callback_data="cancel_support"))
+    
+    await bot.send_message(
+        cq.from_user.id,
+        "💬 **Chat to Admin Mode Activated**\n\n"
+        "You can now send your message here, and it will be forwarded directly to the admin.\n\n"
+        "Click the button below to exit.",
+        reply_markup=cancel_kb
+    )
+
+@dp.callback_query_handler(lambda c: c.data == 'cancel_support', state=OrderStates.in_support)
+async def cancel_support(cq: types.CallbackQuery, state: FSMContext):
+    await cq.answer("Support closed.")
+    await state.finish()
+    await bot.send_message(cq.from_user.id, "You are back to the main menu. Choose a service:", reply_markup=menu_keyboard())
+
+# --- Quantity Received -> Send QR Code (Scanner) with Live 5-Min Countdown ---
+@dp.message_handler(state=OrderStates.wait_quantity)
+async def handle_quantity(msg: types.Message, state: FSMContext):
+    if msg.text:
+        await state.update_data(quantity=msg.text)
+        await OrderStates.wait_payment_and_url.set()
+        
+        initial_caption = (
+            f"📦 **Quantity:** {msg.text}\n\n"
+            f"📲 Please scan the QR code above for payment.\n"
+            f"After payment, send your **Instagram URL** and the **Payment Screenshot** here.\n\n"
+            "⏳ Time Remaining: 05:00"
+        )
+        try:
+            qr_msg = await bot.send_photo(msg.chat.id, QR_URL, caption=initial_caption)
+        except:
+            qr_msg = await msg.answer(initial_caption)
+
+        async def live_countdown_timer(chat_id, message_id):
+            for remaining in range(299, -1, -1):
+                await asyncio.sleep(1)
+                current_state = await dp.current_state(user=chat_id).get_state()
+                if current_state != 'OrderStates:wait_payment_and_url':
+                    return
+                
+                if remaining % 5 == 0 or remaining < 10:
+                    mins, secs = divmod(remaining, 60)
+                    time_str = f"{mins:02d}:{secs:02d}"
+                    data_dict = await dp.current_state(user=chat_id).get_data()
+                    qty = data_dict.get('quantity', 'N/A')
+                    updated_caption = (
+                        f"📦 **Quantity:** {qty}\n\n"
+                        f"📲 Please scan the QR code above for payment.\n"
+                        f"After payment, send your **Instagram URL** and the **Payment Screenshot** here.\n\n"
+                        f"⏳ Time Remaining: {time_str}"
+                    )
+                    try:
+                        await bot.edit_message_caption(chat_id=chat_id, message_id=message_id, caption=updated_caption)
+                    except:
+                        pass
+            
+            current_state = await dp.current_state(user=chat_id).get_state()
+            if current_state == 'OrderStates:wait_payment_and_url':
+                await dp.current_state(user=chat_id).finish()
+                try:
+                    await bot.delete_message(chat_id=chat_id, message_id=message_id)
+                except:
+                    pass
+                await bot.send_message(
+                    chat_id,
+                    "⚠️ **Time expired!** The QR scanner has been automatically deleted. Please start again from the menu.",
+                    reply_markup=menu_keyboard()
+                )
+
+        asyncio.create_task(live_countdown_timer(msg.chat.id, qr_msg.message_id))
     else:
-        text = "🔹 [ ❤️ Likes ] (Lifetime 💯 | Fast delivery 📮 | Delivery Time: 3 Hours and 18 Minutes):"
-        prices = [("1000 likes — ₹8", "8"), ("2000 likes — ₹13", "13"), ("3000 likes — ₹18", "18"),
-                  ("4000 likes — ₹23", "23"), ("5000 likes — ₹28", "28"), ("6000 likes — ₹33", "33"),
-                  ("7000 likes — ₹38", "38"), ("8000 likes — ₹43", "43"), ("9000 likes — ₹48", "48"), ("10000 likes — ₹60", "60")]
+        await msg.answer("⚠️ Please enter a valid quantity number:")
 
-    for label, val in prices:
-        keyboard.insert(InlineKeyboardButton(label, callback_data=f"buy_{service_type}_{label}"))
-    keyboard.add(InlineKeyboardButton("➕ More...", callback_data="more"), InlineKeyboardButton("🔙 Back to Main Menu", callback_data="back_main"))
-    
-    await bot.edit_message_text(text, callback_query.from_user.id, callback_query.message.message_id, reply_markup=keyboard)
-
-@dp.callback_query_handler(lambda c: c.data == 'back_main')
-async def back_to_main(callback_query: types.CallbackQuery):
-    await bot.edit_message_text(callback_query.message.text, callback_query.from_user.id, callback_query.message.message_id, reply_markup=get_main_menu())
-
-@dp.callback_query_handler(lambda c: c.data.startswith('buy_'))
-async def process_purchase(callback_query: types.CallbackQuery, state: FSMContext):
-    _, s_type, p_name = callback_query.data.split('_')
-    await state.update_data(s_type=s_type, p_name=p_name)
-    
-    qr_msg = await bot.send_photo(callback_query.from_user.id, QR_CODE_URL, 
-                         caption="Please send your Instagram URL (Profile Link) along with the payment screenshot here.")
-    
-    await state.update_data(qr_msg_id=qr_msg.message_id)
-    await OrderStates.waiting_for_payment.set()
-
-@dp.message_handler(state=OrderStates.waiting_for_payment, content_types=['photo', 'text'])
-async def handle_payment_submission(message: types.Message, state: FSMContext):
+# --- Handle Payment Details (Instagram URL + Screenshot) ---
+@dp.message_handler(state=OrderStates.wait_payment_and_url, content_types=['photo', 'text'])
+async def handle_payment_and_url(msg: types.Message, state: FSMContext):
     data = await state.get_data()
+    uid = msg.from_user.id
+    s_type = data.get('service', 'bot')
+    qty = data.get('quantity', 'N/A')
+    username = msg.from_user.username or "No Username"
+    first_name = msg.from_user.first_name or "User"
     
-    if message.photo and message.caption:
-        admin_kb = InlineKeyboardMarkup().add(InlineKeyboardButton("✅ Approve", callback_data=f"ap_{message.from_user.id}_{data['s_type']}_{data['p_name']}_{message.message_id}_{data['qr_msg_id']}"))
-        await bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=f"New Order Request!\nUser: @{message.from_user.username}\nDetails: {data['p_name']}\nLink: {message.caption}", reply_markup=admin_kb)
-        await message.answer("Processing your request... Please wait for Admin approval.")
+    if msg.text and "instagram.com" in msg.text:
+        await state.update_data(url=msg.text)
+        await msg.answer("✅ **Instagram URL received!** Now please send the **payment screenshot**.")
+        return
+    elif msg.photo:
+        url_data = data.get('url', 'Not Provided')
+        
+        admin_box = (
+            "━━━━━━━━━━━━━━━━━━\n"
+            "📥 **NEW ORDER RECEIVED**\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            f"👤 **Name:** {first_name}\n"
+            f"🏷 **Username:** @{username}\n"
+            f"🆔 **User ID:** `{uid}`\n"
+            f"🛒 **Service:** {SERVICES[s_type]['name']}\n"
+            f"📊 **Quantity:** {qty}\n"
+            f"🔗 **URL:** {url_data}\n"
+            "━━━━━━━━━━━━━━━━━━"
+        )
+        sent_box = await bot.send_message(ADMIN_ID, admin_box)
+        await msg.forward(ADMIN_ID)
+        
+        ap_markup = InlineKeyboardMarkup(row_width=1)
+        ap_markup.add(
+            InlineKeyboardButton("✅ Approve", callback_data=f"ap_{uid}_{sent_box.message_id}"),
+            InlineKeyboardButton("❌ Reject", callback_data=f"rj_{uid}_{sent_box.message_id}")
+        )
+        await bot.send_message(ADMIN_ID, "👇 To approve, click 'Approve' and reply with your custom delivery time:", reply_markup=ap_markup)
+        
+        await msg.answer("✅ **Screenshot received!** Admin will verify and process your order shortly.")
         await state.finish()
     else:
-        await message.answer("Please send the photo WITH the Instagram URL as caption.")
+        await msg.answer("⚠️ Please send a valid Instagram URL or the payment screenshot image.")
 
-@dp.callback_query_handler(lambda c: c.data.startswith('ap_'))
-async def approve_order(callback_query: types.CallbackQuery):
-    _, u_id, s_type, p_name, u_msg_id, qr_id = callback_query.data.split('_')
-    u_id, u_msg_id, qr_id = int(u_id), int(u_msg_id), int(qr_id)
+# --- Admin Action: Approve / Reject ---
+@dp.callback_query_handler(lambda c: c.data.startswith('ap_') or c.data.startswith('rj_'))
+async def admin_actions(cq: types.CallbackQuery, state: FSMContext):
+    if cq.from_user.id != ADMIN_ID: return
+    parts = cq.data.split('_')
+    action = parts[0]
+    u_id = int(parts[1])
+    box_msg_id = int(parts[2])
     
-    user = await bot.get_chat(u_id)
+    if action == 'rj':
+        await bot.send_message(u_id, "❌ Your payment was rejected or invalid. Please contact support.")
+        await cq.answer("Order Rejected")
+        try:
+            await bot.edit_message_text("❌ Order Rejected.", ADMIN_ID, cq.message.message_id)
+        except:
+            pass
+        return
+        
+    await cq.answer()
+    await bot.send_message(ADMIN_ID, f"✍️ Reply to this message with the custom delivery time for User ID `{u_id}` (Example: `10 Hours`, `2 Days`):")
+    
+    admin_state = dp.current_state(user=ADMIN_ID)
+    await admin_state.set_state(OrderStates.wait_admin_time)
+    await admin_state.update_data(target_uid=u_id, orig_msg_id=cq.message.message_id, box_msg_id=box_msg_id)
+
+@dp.message_handler(state=OrderStates.wait_admin_time)
+async def get_admin_time(msg: types.Message, state: FSMContext):
+    if msg.from_user.id != ADMIN_ID: return
+    data = await state.get_data()
+    u_id = data.get('target_uid')
+    orig_msg_id = data.get('orig_msg_id')
+    box_msg_id = data.get('box_msg_id')
+    custom_time = msg.text
+    
+    await state.finish()
+    
     start_time = datetime.now().strftime("%Y-%m-%d %H:%M")
-    srv = SERVICES[s_type]
     
     receipt = (
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        "⚡️ ORDER ACTIVATED SUCCESSFULLY ⚡️\n"
-        "━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"👤 Customer: @{user.username}\n"
-        f"🛒 Service: {srv['name']}\n"
-        f"📈 Quantity/Package: {p_name}\n\n"
-        f"🕒 Start Time: {start_time}\n"
-        f"⏳ Estimated Delivery: {srv['time']}\n"
-        "🟢 Status: Processing...\n\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        "🤖 Thank you for purchasing! Your order is being delivered safely."
+        "━━━━━━━━━━━━━━━━━━\n"
+        "⚡ **ORDER ACTIVATED SUCCESSFULLY** ⚡\n"
+        "━━━━━━━━━━━━━━━━━━\n\n"
+        f"⏱ **Start Time:** {start_time}\n"
+        f"⏳ **Estimated Delivery Time:** {custom_time}\n"
+        f"🟢 **Status:** Processing in progress...\n\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "🤖 *Your order is being handled safely & securely.*"
     )
-    
     rec_msg = await bot.send_message(u_id, receipt)
-    await callback_query.answer("Order Approved!")
-    await bot.edit_message_caption(ADMIN_ID, callback_query.message.message_id, caption="Approved ✅")
-
-    asyncio.create_task(schedule_completion(u_id, srv, p_name, [qr_id, u_msg_id, rec_msg.message_id]))
-
-async def schedule_completion(user_id, srv, p_name, messages_to_delete):
-    await asyncio.sleep(srv['delay'])
+    await msg.reply(f"✅ Successfully set delivery time as: **{custom_time}**")
     
-    for msg_id in messages_to_delete:
-        try: await bot.delete_message(user_id, msg_id)
-        except: pass
+    try:
+        await bot.edit_message_text(f"✅ **Order Approved** | Delivery Time: {custom_time}", ADMIN_ID, orig_msg_id)
+    except:
+        pass
         
-    completion_text = (
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        "🎉 YOUR ORDER IS COMPLETED 🎉\n"
-        "━━━━━━━━━━━━━━━━━━━━\n\n"
-        "✨ Dear Customer, your service has been fully delivered!\n\n"
-        "📊 Summary of Service:\n"
-        "🔹 Platform: Instagram\n"
-        f"🔹 Service Type: {p_name}\n"
-        "🔹 Status: 100% Completed ✅\n\n"
-        "🤝 Thank you for choosing our SMM service. Hope to see you again soon!\n"
-        "━━━━━━━━━━━━━━━"
+    async def finish_and_delete():
+        await asyncio.sleep(25)
+        
+        comp_text = (
+            "━━━━━━━━━━━━━━━━━━\n"
+            "🎉 **ORDER COMPLETION NOTICE** 🎉\n"
+            "━━━━━━━━━━━━━━━━━━\n\n"
+            "✨ Dear Valued Customer,\n"
+            "Your requested service has been **fully delivered** successfully!\n\n"
+            "🔹 **Status:** 100% Completed ✅\n"
+            "🤝 **Thank you for trusting us!**\n"
+            "━━━━━━━━━━━━━━━━━━"
+        )
+        
+        admin_completion_notice = (
+            "━━━━━━━━━━━━━━━━━━\n"
+            "✅ **ORDER COMPLETED NOTIFICATION**\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            f"🆔 **User ID:** `{u_id}`\n"
+            f"⏱ **Completed At:** {datetime.now().strftime('%Y-%m-%d %H:%M')}\n"
+            "📌 **Status:** Successfully Finished & Delivered!\n"
+            "━━━━━━━━━━━━━━━━━━"
+        )
+        
+        try:
+            sent_final = await bot.send_message(u_id, comp_text, reply_markup=menu_keyboard())
+            await bot.send_message(ADMIN_ID, admin_completion_notice)
+            
+            await asyncio.sleep(10)
+            await sent_final.delete()
+            await rec_msg.delete()
+            await bot.delete_message(ADMIN_ID, box_msg_id)
+        except Exception as e:
+            print(f"Error in finish task: {e}")
+
+    asyncio.create_task(finish_and_delete())
+
+# --- Chat to Admin / Support Message Handler ---
+@dp.message_handler(state=OrderStates.in_support, content_types=['text', 'photo', 'video', 'document'])
+async def customer_support_message(msg: types.Message):
+    user_id = msg.from_user.id
+    username = msg.from_user.username or "No Username"
+    first_name = msg.from_user.first_name or "User"
+    
+    header = (
+        "━━━━━━━━━━━━━━━━━━\n"
+        "💬 **SUPPORT MESSAGE**\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        f"👤 **Name:** {first_name}\n"
+        f"🏷 **Username:** @{username}\n"
+        f"🆔 **User ID:** `{user_id}`\n"
+        "━━━━━━━━━━━━━━━━━━"
     )
-    await bot.send_message(user_id, completion_text, reply_markup=get_main_menu())
+    await bot.send_message(ADMIN_ID, header)
+    await msg.forward(ADMIN_ID)
+    await msg.reply("✅ **Your message has been sent to the admin.**")
+
+@dp.message_handler(content_types=['text', 'photo', 'video', 'document'])
+async def global_message_handler(msg: types.Message):
+    if msg.from_user.id == ADMIN_ID and msg.reply_to_message:
+        try:
+            txt = msg.reply_to_message.text or msg.reply_to_message.caption
+            uid = int([x for x in txt.split('\n') if "🆔" in x and "ID:" in x][0].replace("🆔", "").replace("User ID:", "").replace("ID:", "").strip().replace("`", ""))
+            
+            sent_msg = await bot.send_message(uid, f"👨‍💻 **Admin Reply:**\n\n{msg.text}")
+            await msg.reply("✅ Reply sent successfully!")
+            
+            async def del_support():
+                await asyncio.sleep(15)
+                try: await sent_msg.delete()
+                except: pass
+            asyncio.create_task(del_support())
+        except Exception as e:
+            await msg.reply(f"❌ Error sending reply: {e}")
+        return
+
+# --- Crash-Proof & Auto Recovery Loop ---
 if __name__ == '__main__':
-    from aiogram import executor
     keep_alive()
     while True:
         try:
+            print("Bot is running securely...")
             executor.start_polling(dp, skip_updates=True)
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Error occurred: {e}. Restarting in 5 seconds...")
             asyncio.sleep(5)
+
 
