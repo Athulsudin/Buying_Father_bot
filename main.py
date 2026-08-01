@@ -212,9 +212,9 @@ async def handle_quantity(msg: types.Message, state: FSMContext):
                         pass
                 
                 try:
-                    current_state = await dp.current_state(user=chat_id).get_state()
+                    current_state = await dp.storage.get_state(chat=chat_id, user=chat_id)
                     if current_state == 'OrderStates:wait_payment_and_url':
-                        await dp.current_state(user=chat_id).finish()
+                        await dp.storage.finish(chat=chat_id, user=chat_id)
                         try:
                             await bot.delete_message(chat_id=chat_id, message_id=message_id)
                         except Exception:
@@ -336,7 +336,7 @@ async def admin_actions(cq: types.CallbackQuery, state: FSMContext):
         await cq.answer()
         await bot.send_message(ADMIN_ID, f"✍️ Reply to this message with the custom delivery time for User ID `{u_id}` (Example: `10m`, `1h`, `2 Hours`):")
         
-        admin_state = dp.current_state(user=ADMIN_ID)
+        admin_state = Dispatcher.get_current().current_state(user=ADMIN_ID, chat=ADMIN_ID)
         await admin_state.set_state(OrderStates.wait_admin_time)
         await admin_state.update_data(target_uid=u_id, orig_msg_id=cq.message.message_id, box_msg_id=box_msg_id)
     except Exception as e:
@@ -504,10 +504,11 @@ if __name__ == '__main__':
     keep_alive()
     while True:
         try:
-            print("Bot is running securely and crash-proof...")
-            executor.start_polling(dp, skip_updates=True)
+            print("Bot is running securely with high-traffic protection...")
+            executor.start_polling(dp, skip_updates=True, relax=0.05, timeout=30)
         except Exception as e:
-            print(f"Critical Error occurred: {e}. Restarting safely in 5 seconds...")
+            print(f"Critical Error occurred: {e}. Auto-restarting safely in 2 seconds...")
             import time
-            time.sleep(5)
+            time.sleep(2)
+
 
