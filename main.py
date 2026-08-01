@@ -20,7 +20,7 @@ def keep_alive():
     threading.Thread(target=lambda: app.run(host='0.0.0.0', port=port)).start()
 
 # --- Configurations ---
-API_TOKEN = '8642149587:AAEQCxPaEUe_-rgXQZeHxawhAZqXWwVveQ'
+API_TOKEN = '8642149587:AAE_RjrUc-ChnNAigYXoeuqgHdHgeLpEvOo'
 ADMIN_ID = 7616127905
 QR_URL = 'https://ibb.co/kg2jT6ZF'
 
