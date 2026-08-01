@@ -386,45 +386,42 @@ async def get_admin_time(msg: types.Message, state: FSMContext):
             await bot.edit_message_text(f"✅ **Order Approved** | Delivery Time: {custom_time}", ADMIN_ID, orig_msg_id)
         except Exception:
             pass
+        async def finish_and_delete():
+        # Parse custom time given by admin
+        delay_seconds = 60
+        try:
+            t_str = custom_time.strip().lower()
+            total_seconds = 0
             
-                async def finish_and_delete():
-            # Parse custom time given by admin (Supports Days, Hours, and Minutes together e.g., '2h 30m', '1d', '45m')
-            delay_seconds = 60 # Default 1 minute
-            try:
-                t_str = custom_time.strip().lower()
-                total_seconds = 0
-                
-                # Extract days if present (e.g., '1d', '2 days')
-                if 'd' in t_str or 'day' in t_str:
-                    import re
-                    match_d = re.search(r'(\d+)\s*(?:d|day)', t_str)
-                    if match_d:
-                        total_seconds += int(match_d.group(1)) * 86400
-                
-                # Extract hours if present (e.g., '2h', '3 hours')
-                if 'h' in t_str or 'hour' in t_str:
-                    match_h = re.search(r'(\d+)\s*(?:h|hour)', t_str)
-                    if match_h:
-                        total_seconds += int(match_h.group(1)) * 3600
-                
-                # Extract minutes if present (e.g., '30m', '45 mins')
-                if 'm' in t_str or 'min' in t_str:
-                    match_m = re.search(r'(\d+)\s*(?:m|min)', t_str)
-                    if match_m:
-                        total_seconds += int(match_m.group(1)) * 60
+            if 'd' in t_str or 'day' in t_str:
+                import re
+                match_d = re.search(r'(\d+)\s*(?:d|day)', t_str)
+                if match_d:
+                    total_seconds += int(match_d.group(1)) * 86400
+            
+            if 'h' in t_str or 'hour' in t_str:
+                import re
+                match_h = re.search(r'(\d+)\s*(?:h|hour)', t_str)
+                if match_h:
+                    total_seconds += int(match_h.group(1)) * 3600
+            
+            if 'm' in t_str or 'min' in t_str:
+                import re
+                match_m = re.search(r'(\d+)\s*(?:m|min)', t_str)
+                if match_m:
+                    total_seconds += int(match_m.group(1)) * 60
 
-                # If only a plain number is given, default it to minutes
-                if total_seconds == 0 and t_str.isdigit():
-                    total_seconds = int(t_str) * 60
-                elif total_seconds > 0:
-                    delay_seconds = total_seconds
-                else:
-                    delay_seconds = 60
-            except Exception:
+            if total_seconds == 0 and t_str.isdigit():
+                total_seconds = int(t_str) * 60
+            elif total_seconds > 0:
+                delay_seconds = total_seconds
+            else:
                 delay_seconds = 60
+        except Exception:
+            delay_seconds = 60
 
-            await asyncio.sleep(delay_seconds)
-            
+        await asyncio.sleep(delay_seconds)
+
             completed_time_ist = datetime.now(IST).strftime('%Y-%m-%d %H:%M')
             admin_completion_notice = (
                 "━━━━━━━━━━━━━━━━━━\n"
