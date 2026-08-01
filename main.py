@@ -16,11 +16,15 @@ app = Flask('')
 def home(): return "Bot is Alive!"
 
 def keep_alive():
-    try:
-        port = int(os.environ.get('PORT', 10000))
-        threading.Thread(target=lambda: app.run(host='0.0.0.0', port=port, use_reloader=False, debug=False), daemon=True).start()
-    except Exception as e:
-        print(f"Flask keep_alive error: {e}")
+    def run_flask():
+        try:
+            port = int(os.environ.get('PORT', 10000))
+            app.run(host='0.0.0.0', port=port, use_reloader=False, debug=False, threaded=True)
+        except Exception as e:
+            print(f"Flask internal error: {e}")
+            
+    t = threading.Thread(target=run_flask, daemon=True)
+    t.start()
 
 # --- Configurations ---
 API_TOKEN = '8642149587:AAE_RjrUc-ChnNAIgYXoeuqgHdHgelPEvOo'
@@ -506,3 +510,4 @@ if __name__ == '__main__':
             print(f"Critical Error occurred: {e}. Restarting safely in 5 seconds...")
             import time
             time.sleep(5)
+
