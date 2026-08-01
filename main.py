@@ -386,31 +386,26 @@ async def get_admin_time(msg: types.Message, state: FSMContext):
             await bot.edit_message_text(f"✅ **Order Approved** | Delivery Time: {custom_time}", ADMIN_ID, orig_msg_id)
         except Exception:
             pass
-            async def finish_and_delete():
+        async def finish_and_delete():
             delay_seconds = 60
         try:
-
             t_str = custom_time.strip().lower()
             total_seconds = 0
-            
             if 'd' in t_str or 'day' in t_str:
                 import re
                 match_d = re.search(r'(\d+)\s*(?:d|day)', t_str)
                 if match_d:
                     total_seconds += int(match_d.group(1)) * 86400
-            
             if 'h' in t_str or 'hour' in t_str:
                 import re
                 match_h = re.search(r'(\d+)\s*(?:h|hour)', t_str)
                 if match_h:
                     total_seconds += int(match_h.group(1)) * 3600
-            
             if 'm' in t_str or 'min' in t_str:
                 import re
                 match_m = re.search(r'(\d+)\s*(?:m|min)', t_str)
                 if match_m:
                     total_seconds += int(match_m.group(1)) * 60
-
             if total_seconds == 0 and t_str.isdigit():
                 total_seconds = int(t_str) * 60
             elif total_seconds > 0:
@@ -419,8 +414,8 @@ async def get_admin_time(msg: types.Message, state: FSMContext):
                 delay_seconds = 60
         except Exception:
             delay_seconds = 60
-
         await asyncio.sleep(delay_seconds)
+
 
 
 
