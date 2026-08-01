@@ -387,19 +387,43 @@ async def get_admin_time(msg: types.Message, state: FSMContext):
         except Exception:
             pass
             
-        async def finish_and_delete():
-            await asyncio.sleep(15)
-            
-            comp_text = (
-                "━━━━━━━━━━━━━━━━━━\n"
-                "🎉 **ORDER COMPLETION NOTICE** 🎉\n"
-                "━━━━━━━━━━━━━━━━━━\n\n"
-                "✨ Dear Valued Customer,\n"
-                "Your requested service has been **fully delivered** successfully!\n\n"
-                "🔹 **Status:** 100% Completed ✅\n"
-                "🤝 **Thank you for trusting us!**\n"
-                "━━━━━━━━━━━━━━━━━━"
-            )
+                async def finish_and_delete():
+            # Parse custom time given by admin (Supports Days, Hours, and Minutes together e.g., '2h 30m', '1d', '45m')
+            delay_seconds = 60 # Default 1 minute
+            try:
+                t_str = custom_time.strip().lower()
+                total_seconds = 0
+                
+                # Extract days if present (e.g., '1d', '2 days')
+                if 'd' in t_str or 'day' in t_str:
+                    import re
+                    match_d = re.search(r'(\d+)\s*(?:d|day)', t_str)
+                    if match_d:
+                        total_seconds += int(match_d.group(1)) * 86400
+                
+                # Extract hours if present (e.g., '2h', '3 hours')
+                if 'h' in t_str or 'hour' in t_str:
+                    match_h = re.search(r'(\d+)\s*(?:h|hour)', t_str)
+                    if match_h:
+                        total_seconds += int(match_h.group(1)) * 3600
+                
+                # Extract minutes if present (e.g., '30m', '45 mins')
+                if 'm' in t_str or 'min' in t_str:
+                    match_m = re.search(r'(\d+)\s*(?:m|min)', t_str)
+                    if match_m:
+                        total_seconds += int(match_m.group(1)) * 60
+
+                # If only a plain number is given, default it to minutes
+                if total_seconds == 0 and t_str.isdigit():
+                    total_seconds = int(t_str) * 60
+                elif total_seconds > 0:
+                    delay_seconds = total_seconds
+                else:
+                    delay_seconds = 60
+            except Exception:
+                delay_seconds = 60
+
+            await asyncio.sleep(delay_seconds)
             
             completed_time_ist = datetime.now(IST).strftime('%Y-%m-%d %H:%M')
             admin_completion_notice = (
