@@ -1,3 +1,18 @@
+from flask import Flask
+import threading
+import os
+
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot is Alive!"
+
+def keep_alive():
+    port = int(os.environ.get('PORT', 8080))
+    t = threading.Thread(target=lambda: app.run(host='0.0.0.0', port=port))
+    t.start()
+
 # ==============================================================================
 # 📌 PROJECT: INSTAGRAM SMM BOT (OWNER BOT ARCHITECTURE)
 # ⚙️ HOSTING MODE: 24/7 FREE HOSTING COMPATIBLE (KOYEB / RENDER / RAILWAY)
@@ -176,4 +191,6 @@ async def schedule_completion(user_id, srv, p_name, messages_to_delete):
 
 if __name__ == '__main__':
     from aiogram import executor
+    keep_alive()
     executor.start_polling(dp, skip_updates=True)
+
