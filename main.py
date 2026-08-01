@@ -8,6 +8,8 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
+import logging
+logging.basicConfig(level=logging.ERROR)
 from aiogram import executor
 
 # --- Flask Server for 24/7 Uptime (Render / Keep Alive) ---
@@ -504,11 +506,18 @@ if __name__ == '__main__':
     keep_alive()
     while True:
         try:
-            print("Bot is running securely with high-traffic protection...")
-            executor.start_polling(dp, skip_updates=True, relax=0.05, timeout=30)
+            print("Bot is running with ultimate crash-proof protection...")
+            executor.start_polling(
+                dp, 
+                skip_updates=True, 
+                relax=0.01, 
+                timeout=20, 
+                allowed_updates=types.AllowedUpdates.all()
+            )
         except Exception as e:
-            print(f"Critical Error occurred: {e}. Auto-restarting safely in 2 seconds...")
+            print(f"Caught critical crash: {e}. Auto-restarting instantly in 1 second...")
             import time
-            time.sleep(2)
+            time.sleep(1)
+
 
 
