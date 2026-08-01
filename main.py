@@ -18,7 +18,7 @@ def home(): return "Bot is Alive!"
 def keep_alive():
     try:
         port = int(os.environ.get('PORT', 10000))
-        threading.Thread(target=lambda: app.run(host='0.0.0.0', port=port), daemon=True).start()
+        threading.Thread(target=lambda: app.run(host='0.0.0.0', port=port, use_reloader=False, debug=False), daemon=True).start()
     except Exception as e:
         print(f"Flask keep_alive error: {e}")
 
@@ -382,7 +382,7 @@ async def get_admin_time(msg: types.Message, state: FSMContext):
             pass
             
         async def finish_and_delete():
-            await asyncio.sleep(15) # Change or adjust timer duration as needed
+            await asyncio.sleep(15)
             
             comp_text = (
                 "━━━━━━━━━━━━━━━━━━\n"
