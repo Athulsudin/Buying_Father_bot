@@ -1446,12 +1446,6 @@ async def cancel_to_panel_handler(cq: types.CallbackQuery, state: FSMContext):
 # MAIN EXECUTION WITH AUTO-RESTART LOOP
 # ==============================================================================
 if __name__ == '__main__':
-    keep_alive()  # Starts background Flask server for Render/Koyeb hosting
-    
-    while True:
-        try:
-            logging.info("Starting Telegram Bot Polling with Dynamic MongoDB Settings...")
-            executor.start_polling(dp, skip_updates=True)
-        except Exception as e:
-            logging.error(f"Bot crashed with error: {e}. Auto-restarting in 2 seconds...")
-            asyncio.run(asyncio.sleep(2))
+    keep_alive()
+    executor.start_polling(dp, skip_updates=True)
+
