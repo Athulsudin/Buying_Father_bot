@@ -26,7 +26,7 @@ logging.basicConfig(
 # ==============================================================================
 # CONFIGURATION & MONGO DB SETUP
 # ==============================================================================
-BOT_TOKEN = "8642149587:AAHLsi12MZ57Bfd9-mu1Xoc7Stbremux4"
+BOT_TOKEN = "8642149587:AAEbey_Tg0SSz-iKCOuACjpoXwUxKm9fMRU"
 SUPPORT_USERNAME = "@Athulsudin"
 ADMIN_ID = int(os.environ.get("ADMIN_ID", 123456789))
 
