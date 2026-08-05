@@ -32,7 +32,7 @@ def keep_alive():
     t.start()
 
 # --- Configurations ---
-API_TOKEN = '​8642149587:AAEbey_Tg0SSz-iKCOuACjpoXwUxKm9fMRU'
+API_TOKEN = '​​8642149587:AAGCDZqRoYxFAGGMKjLAAQZQG0S_BGdfQGw'
 ADMIN_ID = 7616127905
 QR_URL = 'https://ibb.co/kg2jT6ZF'
 PAYMENT_PROOF_CHANNEL = 'https://t.me/+hLxD0623ZEs1M2I1'
