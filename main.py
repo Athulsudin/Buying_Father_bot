@@ -40,7 +40,6 @@ PAYMENT_PROOF_CHANNEL = 'https://t.me/+hLxD0623ZEs1M2I1'
 # Indian Standard Time (IST) Zone (+5:30)
 IST = timezone(timedelta(hours=5, minutes=30))
 
-bot = Bot(token=API_TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 
