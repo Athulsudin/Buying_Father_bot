@@ -3,6 +3,7 @@ import asyncio
 import threading
 import re
 import logging
+import json
 from flask import Flask
 from datetime import datetime, timezone, timedelta
 from aiogram import Bot, Dispatcher, types
@@ -13,6 +14,88 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram import executor
 
 logging.basicConfig(level=logging.ERROR)
+
+# --- Database for Persistent Users and Dynamic Configs ---
+USERS_FILE = "users.json"
+CONFIG_FILE = "config.json"
+
+def load_users():
+    if os.path.exists(USERS_FILE):
+        try:
+            with open(USERS_FILE, "r") as f:
+                return set(json.load(f))
+        except Exception:
+            return set()
+    return set()
+
+def save_user(user_id):
+    users = load_users()
+    if user_id not in users:
+        users.add(user_id)
+        with open(USERS_FILE, "w") as f:
+            json.dump(list(users), f)
+
+# Default Services Data
+DEFAULT_SERVICES = {
+    "bot": {
+        "title": "🔹 [ 🤖 Bot Followers ]\n*(Low Speed ⏰ | No refill 🚫 | Delivery Time: {time})*",
+        "delivery_time": "2 Hours and 45 Minutes",
+        "plans": [
+            {"qty": "1000", "price": 49, "text": "🤖 1k Bot — ₹{price}"},
+            {"qty": "2000", "price": 79, "text": "🤖 2k Bot — ₹{price}"},
+            {"qty": "3000", "price": 100, "text": "🤖 3k Bot — ₹{price}"},
+            {"qty": "4000", "price": 120, "text": "🤖 4k Bot — ₹{price}"},
+            {"qty": "5000", "price": 140, "text": "🤖 5k Bot — ₹{price}"},
+            {"qty": "6000", "price": 160, "text": "🤖 6k Bot — ₹{price}"},
+            {"qty": "7000", "price": 180, "text": "🤖 7k Bot — ₹{price}"},
+            {"qty": "8000", "price": 200, "text": "🤖 8k Bot — ₹{price}"},
+            {"qty": "9000", "price": 220, "text": "🤖 9k Bot — ₹{price}"},
+            {"qty": "10000", "price": 250, "text": "🤖 10k Bot — ₹{price}"}
+        ]
+    },
+    "real": {
+        "title": "🔹 [ 🔥 Real Followers ]\n*(Fast Delivery ⏰ | Refill 💵 | Delivery Time: {time})*",
+        "delivery_time": "7 Hours and 8 Minutes",
+        "plans": [
+            {"qty": "1000", "price": 100, "text": "🔥 1k Real — ₹{price}"},
+            {"qty": "2000", "price": 145, "text": "🔥 2k Real — ₹{price}"},
+            {"qty": "3000", "price": 195, "text": "🔥 3k Real — ₹{price}"},
+            {"qty": "4000", "price": 245, "text": "🔥 4k Real — ₹{price}"},
+            {"qty": "5000", "price": 290, "text": "🔥 5k Real — ₹{price}"}
+        ]
+    },
+    "likes": {
+        "title": "🔹 [ ❤️ Likes ]\n*(Lifetime 💯 | Fast delivery 📮 | Delivery Time: {time})*",
+        "delivery_time": "3 Hours and 18 Minutes",
+        "plans": [
+            {"qty": "1000", "price": 8, "text": "❤️ 1000 Likes — ₹{price}"},
+            {"qty": "2000", "price": 13, "text": "❤️ 2000 Likes — ₹{price}"},
+            {"qty": "3000", "price": 18, "text": "❤️ 3000 Likes — ₹{price}"},
+            {"qty": "4000", "price": 23, "text": "❤️ 4000 Likes — ₹{price}"},
+            {"qty": "5000", "price": 28, "text": "❤️ 5000 Likes — ₹{price}"},
+            {"qty": "6000", "price": 33, "text": "❤️ 6000 Likes — ₹{price}"},
+            {"qty": "7000", "price": 38, "text": "❤️ 7000 Likes — ₹{price}"},
+            {"qty": "8000", "price": 43, "text": "❤️ 8000 Likes — ₹{price}"},
+            {"qty": "9000", "price": 48, "text": "❤️ 9000 Likes — ₹{price}"},
+            {"qty": "10000", "price": 60, "text": "❤️ 10000 Likes — ₹{price}"}
+        ]
+    }
+}
+
+def load_services():
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            return DEFAULT_SERVICES
+    return DEFAULT_SERVICES
+
+def save_services(data):
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+SERVICES_DATA = load_services()
 
 # --- Flask Server for 24/7 Uptime ---
 app = Flask('')
@@ -37,7 +120,6 @@ ADMIN_ID = 7616127905
 QR_URL = 'https://ibb.co/kg2jT6ZF'
 PAYMENT_PROOF_CHANNEL = 'https://t.me/+hLxD0623ZEs1M2I1'
 
-# Indian Standard Time (IST) Zone (+5:30)
 IST = timezone(timedelta(hours=5, minutes=30))
 
 storage = MemoryStorage()
@@ -49,56 +131,19 @@ class OrderStates(StatesGroup):
     wait_admin_time = State()
     in_support = State()
 
-# --- Service Data ---
-SERVICES_DATA = {
-    "bot": {
-        "title": "🔹 [ 🤖 Bot Followers ]\n*(Low Speed ⏰ | No refill 🚫 | Delivery Time: 2 Hours and 45 Minutes)*",
-        "plans": [
-            {"qty": "1000", "price": 49, "text": "🤖 1k Bot — ₹49"},
-            {"qty": "2000", "price": 79, "text": "🤖 2k Bot — ₹79"},
-            {"qty": "3000", "price": 100, "text": "🤖 3k Bot — ₹100"},
-            {"qty": "4000", "price": 120, "text": "🤖 4k Bot — ₹120"},
-            {"qty": "5000", "price": 140, "text": "🤖 5k Bot — ₹140"},
-            {"qty": "6000", "price": 160, "text": "🤖 6k Bot — ₹160"},
-            {"qty": "7000", "price": 180, "text": "🤖 7k Bot — ₹180"},
-            {"qty": "8000", "price": 200, "text": "🤖 8k Bot — ₹200"},
-            {"qty": "9000", "price": 220, "text": "🤖 9k Bot — ₹220"},
-            {"qty": "10000", "price": 250, "text": "🤖 10k Bot — ₹250"}
-        ]
-    },
-    "real": {
-        "title": "🔹 [ 🔥 Real Followers ]\n*(Fast Delivery ⏰ | Refill 💵 | Delivery Time: 7 Hours and 8 Minutes)*",
-        "plans": [
-            {"qty": "1000", "price": 100, "text": "🔥 1k Real — ₹100"},
-            {"qty": "2000", "price": 145, "text": "🔥 2k Real — ₹145"},
-            {"qty": "3000", "price": 195, "text": "🔥 3k Real — ₹195"},
-            {"qty": "4000", "price": 245, "text": "🔥 4k Real — ₹245"},
-            {"qty": "5000", "price": 290, "text": "🔥 5k Real — ₹290"}
-        ]
-    },
-    "likes": {
-        "title": "🔹 [ ❤️ Likes ]\n*(Lifetime 💯 | Fast delivery 📮 | Delivery Time: 3 Hours and 18 Minutes)*",
-        "plans": [
-            {"qty": "1000", "price": 8, "text": "❤️ 1000 Likes — ₹8"},
-            {"qty": "2000", "price": 13, "text": "❤️ 2000 Likes — ₹13"},
-            {"qty": "3000", "price": 18, "text": "❤️ 3000 Likes — ₹18"},
-            {"qty": "4000", "price": 23, "text": "❤️ 4000 Likes — ₹23"},
-            {"qty": "5000", "price": 28, "text": "❤️ 5000 Likes — ₹28"},
-            {"qty": "6000", "price": 33, "text": "❤️ 6000 Likes — ₹33"},
-            {"qty": "7000", "price": 38, "text": "❤️ 7000 Likes — ₹38"},
-            {"qty": "8000", "price": 43, "text": "❤️ 8000 Likes — ₹43"},
-            {"qty": "9000", "price": 48, "text": "❤️ 9000 Likes — ₹48"},
-            {"qty": "10000", "price": 60, "text": "❤️ 10000 Likes — ₹60"}
-        ]
-    }
-}
-
 # --- Keyboards ---
-def get_main_menu(first_name):
-    kb = InlineKeyboardMarkup(row_width=1)
-    kb.add(InlineKeyboardButton("🛒 Buy Now", callback_data="buy_now"))
-    kb.add(InlineKeyboardButton("📢 Payment Proof ↗️", url=PAYMENT_PROOF_CHANNEL))
-    kb.add(InlineKeyboardButton("📞 Support", callback_data="chat_admin"))
+def get_main_menu():
+    kb = InlineKeyboardMarkup(row_width=2)
+    kb.add(InlineKeyboardButton("🛒 Shop Now", callback_data="buy_now"))
+    kb.add(
+        InlineKeyboardButton("🔑 My Orders", callback_data="my_orders"),
+        InlineKeyboardButton("👤 Your Profile", callback_data="your_profile")
+    )
+    kb.add(
+        InlineKeyboardButton("📢 Pay Proof ↗️", url=PAYMENT_PROOF_CHANNEL),
+        InlineKeyboardButton("💬 Support", callback_data="chat_admin")
+    )
+    kb.add(InlineKeyboardButton("🎬 How to Use Bot", callback_data="how_to_use"))
     return kb
 
 def get_services_menu():
@@ -113,31 +158,25 @@ def get_services_menu():
 
 def get_welcome_text(first_name):
     return (
-        "🚀 **Welcome to ELITE HACKERS** 🌟\n\n"
-        "🥃 Hey! Thanks for reaching out.\n"
-        "❗️ I’m currently busy or offline at the moment.\n"
-        "✉️ Please leave your message, and I’ll respond as soon as I’m available.\n\n"
-        "⏳ Your patience is greatly appreciated.\n"
-        "━━━━━━━━━━━━━━━\n\n"
-        "🏪 — **INSTAGRAM SERVICE** — 🏪\n\n"
-        f"🎉 ***Hello, {first_name}!***\n"
-        "🔑 **Power By ATHUL SUDIN**\n\n"
-        "— 🏪 Direct deals with every supplier\n"
-        "— 💧 Instant delivery after payment\n"
-        "— 🪙 Guaranteed discounted prices\n"
-        "— 📞 24/7 admin support\n\n"
-        "*Tap any button below to begin.*"
+        "═══════════════════════\n"
+        "🚀 **WELCOME TO ELITE HACKERS** 🌟\n"
+        "═══════════════════════\n\n"
+        f"👋 Welcome to our official store bot, **{first_name}**!\n\n"
+        "👇 Select an option from below:"
     )
 
 # --- Start Command ---
 @dp.message_handler(commands=['start'], state='*')
 async def start(msg: types.Message, state: FSMContext):
     try:
-        if msg.from_user.id == ADMIN_ID: 
-            return
-        await state.finish()
-        
         user_id = msg.from_user.id
+        save_user(user_id)
+        
+        if user_id == ADMIN_ID:
+            await msg.answer("👨‍💻 **Admin Commands:**\n\n• `/broadcast <message>` - Send updates to all users\n• `/setprice <category> <index> <new_price>` - Change price\n• `/settime <category> <new_time>` - Change delivery time", parse_mode="Markdown")
+            return
+
+        await state.finish()
         first_name = msg.from_user.first_name or "User"
         username = f"@{msg.from_user.username}" if msg.from_user.username else "No Username"
         profile_link = f"tg://user?id={user_id}"
@@ -153,10 +192,10 @@ async def start(msg: types.Message, state: FSMContext):
         )
         try:
             await bot.send_message(ADMIN_ID, admin_notify, parse_mode="Markdown", disable_web_page_preview=True)
-        except Exception as e:
-            print(f"Failed to notify admin on start: {e}")
+        except Exception:
+            pass
 
-        await msg.answer(get_welcome_text(first_name), reply_markup=get_main_menu(first_name), parse_mode="Markdown")
+        await msg.answer(get_welcome_text(first_name), reply_markup=get_main_menu(), parse_mode="Markdown")
     except Exception as e:
         print(f"Error in start command: {e}")
 
@@ -168,12 +207,48 @@ async def back_to_main_handler(cq: types.CallbackQuery, state: FSMContext):
         await cq.answer()
         first_name = cq.from_user.first_name or "User"
         try:
-            await cq.message.edit_text(get_welcome_text(first_name), reply_markup=get_main_menu(first_name), parse_mode="Markdown")
+            await cq.message.edit_text(get_welcome_text(first_name), reply_markup=get_main_menu(), parse_mode="Markdown")
         except Exception:
             await cq.message.delete()
-            await bot.send_message(cq.from_user.id, get_welcome_text(first_name), reply_markup=get_main_menu(first_name), parse_mode="Markdown")
+            await bot.send_message(cq.from_user.id, get_welcome_text(first_name), reply_markup=get_main_menu(), parse_mode="Markdown")
     except Exception as e:
         print(f"Error in back_to_main: {e}")
+
+@dp.callback_query_handler(lambda c: c.data == 'my_orders', state='*')
+async def my_orders_handler(cq: types.CallbackQuery):
+    await cq.answer()
+    kb = InlineKeyboardMarkup().add(InlineKeyboardButton("🔙 Back to Main Menu", callback_data="back_to_main"))
+    text = "🔑 **My Orders**\n\n📌 You currently have no active or previous orders."
+    await cq.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
+
+@dp.callback_query_handler(lambda c: c.data == 'your_profile', state='*')
+async def your_profile_handler(cq: types.CallbackQuery):
+    await cq.answer()
+    u = cq.from_user
+    kb = InlineKeyboardMarkup().add(InlineKeyboardButton("🔙 Back to Main Menu", callback_data="back_to_main"))
+    text = (
+        "👤 **YOUR PROFILE**\n\n"
+        f"📛 **Name:** {u.first_name}\n"
+        f"🏷 **Username:** @{u.username if u.username else 'N/A'}\n"
+        f"🆔 **User ID:** `{u.id}`"
+    )
+    await cq.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
+
+@dp.callback_query_handler(lambda c: c.data == 'how_to_use', state='*')
+async def how_to_use_handler(cq: types.CallbackQuery):
+    await cq.answer()
+    kb = InlineKeyboardMarkup().add(InlineKeyboardButton("🔙 Back to Main Menu", callback_data="back_to_main"))
+    text = (
+        "🎬 **HOW TO USE THE BOT**\n\n"
+        "1️⃣ Tap on **🛒 Shop Now**.\n"
+        "2️⃣ Select your desired service (Followers / Likes).\n"
+        "3️⃣ Select a package/plan.\n"
+        "4️⃣ Scan the QR code and make payment.\n"
+        "5️⃣ Send the payment screenshot to the bot.\n"
+        "6️⃣ Send your Instagram account link.\n\n"
+        "⚡ Admin will verify and process your order instantly!"
+    )
+    await cq.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
 
 @dp.callback_query_handler(lambda c: c.data == 'back_to_shop', state='*')
 async def back_to_shop_handler(cq: types.CallbackQuery, state: FSMContext):
@@ -211,11 +286,13 @@ async def show_service_plans(cq: types.CallbackQuery):
         kb = InlineKeyboardMarkup(row_width=1)
         
         for idx, plan in enumerate(s_info['plans']):
-            kb.add(InlineKeyboardButton(plan['text'], callback_data=f"plan_{s_type}_{idx}"))
+            btn_text = plan['text'].format(price=plan['price'])
+            kb.add(InlineKeyboardButton(btn_text, callback_data=f"plan_{s_type}_{idx}"))
             
         kb.add(InlineKeyboardButton("🔙 Back to Shop", callback_data="back_to_shop"))
         
-        caption_text = f"{s_info['title']}\n\n**Choose a plan 📥**"
+        title_text = s_info['title'].format(time=s_info.get('delivery_time', 'Standard'))
+        caption_text = f"{title_text}\n\n**Choose a plan 📥**"
         
         try:
             await cq.message.edit_text(caption_text, reply_markup=kb, parse_mode="Markdown")
@@ -237,7 +314,6 @@ async def select_plan_handler(cq: types.CallbackQuery, state: FSMContext):
         qty = plan_info['qty']
         price = plan_info['price']
         
-        # Step 1: Wait for payment screenshot
         await OrderStates.wait_screenshot.set()
         await state.update_data(service=s_type, quantity=qty, price=price)
         
@@ -295,11 +371,10 @@ async def select_plan_handler(cq: types.CallbackQuery, state: FSMContext):
                         await bot.delete_message(chat_id=chat_id, message_id=message_id)
                     except Exception:
                         pass
-                    first_name = (await bot.get_chat(chat_id)).first_name or "User"
                     await bot.send_message(
                         chat_id,
                         "⚠️ **Time expired!** The QR code session has ended. Please start again from the menu.",
-                        reply_markup=get_main_menu(first_name),
+                        reply_markup=get_main_menu(),
                         parse_mode="Markdown"
                     )
             except Exception:
@@ -309,7 +384,7 @@ async def select_plan_handler(cq: types.CallbackQuery, state: FSMContext):
     except Exception as e:
         print(f"Error in select_plan_handler: {e}")
 
-# --- Step 1: Handle Payment Screenshot Verification ---
+# --- Step 1: Payment Screenshot Verification ---
 @dp.message_handler(state=OrderStates.wait_screenshot, content_types=types.ContentTypes.ANY)
 async def process_screenshot(msg: types.Message, state: FSMContext):
     try:
@@ -323,7 +398,7 @@ async def process_screenshot(msg: types.Message, state: FSMContext):
     except Exception as e:
         print(f"Error in process_screenshot: {e}")
 
-# --- Step 2: Handle Instagram URL Verification & Send Order to Admin ---
+# --- Step 2: Instagram URL Verification & Admin Alert ---
 @dp.message_handler(state=OrderStates.wait_url, content_types=types.ContentTypes.ANY)
 async def process_url(msg: types.Message, state: FSMContext):
     try:
@@ -384,15 +459,10 @@ async def start_support(cq: types.CallbackQuery, state: FSMContext):
     try:
         await cq.answer()
         await OrderStates.in_support.set()
-        
-        cancel_kb = InlineKeyboardMarkup(row_width=1)
-        cancel_kb.add(InlineKeyboardButton("❌ Cancel Support", callback_data="cancel_support"))
-        
+        cancel_kb = InlineKeyboardMarkup(row_width=1).add(InlineKeyboardButton("❌ Cancel Support", callback_data="cancel_support"))
         await bot.send_message(
             cq.from_user.id,
-            "💬 **Support Mode Activated**\n\n"
-            "Send your message here. It will be forwarded to the admin.\n\n"
-            "Click below to exit support mode.",
+            "💬 **Support Mode Activated**\n\nSend your message here. It will be forwarded to the admin.\n\nClick below to exit support mode.",
             reply_markup=cancel_kb,
             parse_mode="Markdown"
         )
@@ -404,10 +474,83 @@ async def cancel_support(cq: types.CallbackQuery, state: FSMContext):
     try:
         await cq.answer("Support closed.")
         await state.finish()
-        first_name = cq.from_user.first_name or "User"
-        await bot.send_message(cq.from_user.id, "You are back to the main menu:", reply_markup=get_main_menu(first_name))
+        await bot.send_message(cq.from_user.id, "You are back to the main menu:", reply_markup=get_main_menu())
     except Exception as e:
         print(f"Error in cancel_support: {e}")
+
+# --- ADMIN FEATURE 1: Broadcast Command ---
+@dp.message_handler(commands=['broadcast'], state='*')
+async def broadcast_cmd(msg: types.Message):
+    if msg.from_user.id != ADMIN_ID:
+        return
+
+    reply = msg.reply_to_message
+    users = load_users()
+    count = 0
+
+    if reply:
+        for u_id in users:
+            try:
+                await reply.copy_to(u_id)
+                count += 1
+                await asyncio.sleep(0.05)
+            except Exception:
+                pass
+    else:
+        text = msg.get_args()
+        if not text:
+            await msg.reply("⚠️ **Usage:**\nReply to a message/photo with `/broadcast`\nOR type `/broadcast Your Message Here`", parse_mode="Markdown")
+            return
+
+        for u_id in users:
+            try:
+                await bot.send_message(u_id, text, parse_mode="Markdown")
+                count += 1
+                await asyncio.sleep(0.05)
+            except Exception:
+                pass
+
+    await msg.reply(f"📢 **Broadcast completed successfully!**\nSent to {count} user(s).", parse_mode="Markdown")
+
+# --- ADMIN FEATURE 2: Set Price Command ---
+@dp.message_handler(commands=['setprice'], state='*')
+async def set_price_cmd(msg: types.Message):
+    if msg.from_user.id != ADMIN_ID:
+        return
+
+    args = msg.get_args().split()
+    if len(args) < 3:
+        await msg.reply("⚠️ **Usage:** `/setprice <category> <index> <new_price>`\nExample: `/setprice bot 0 55`", parse_mode="Markdown")
+        return
+
+    cat, idx, new_price = args[0].lower(), int(args[1]), int(args[2])
+
+    if cat in SERVICES_DATA and idx < len(SERVICES_DATA[cat]['plans']):
+        SERVICES_DATA[cat]['plans'][idx]['price'] = new_price
+        save_services(SERVICES_DATA)
+        await msg.reply(f"✅ **Price updated successfully!**\n{cat.capitalize()} plan #{idx} price changed to ₹{new_price}", parse_mode="Markdown")
+    else:
+        await msg.reply("❌ Invalid category or plan index.", parse_mode="Markdown")
+
+# --- ADMIN FEATURE 3: Set Delivery Time Command ---
+@dp.message_handler(commands=['settime'], state='*')
+async def set_time_cmd(msg: types.Message):
+    if msg.from_user.id != ADMIN_ID:
+        return
+
+    args = msg.get_args().split(maxsplit=1)
+    if len(args) < 2:
+        await msg.reply("⚠️ **Usage:** `/settime <category> <new_time>`\nExample: `/settime bot 1 Hour and 30 Minutes`", parse_mode="Markdown")
+        return
+
+    cat, new_time = args[0].lower(), args[1]
+
+    if cat in SERVICES_DATA:
+        SERVICES_DATA[cat]['delivery_time'] = new_time
+        save_services(SERVICES_DATA)
+        await msg.reply(f"✅ **Delivery time updated!**\n{cat.capitalize()} delivery time set to: {new_time}", parse_mode="Markdown")
+    else:
+        await msg.reply("❌ Invalid category. Choose from: bot, real, likes", parse_mode="Markdown")
 
 # --- Admin Actions: Approve / Reject ---
 @dp.callback_query_handler(lambda c: c.data and (c.data.startswith('ap_') or c.data.startswith('rj_')), state='*')
@@ -535,11 +678,10 @@ async def get_admin_time(msg: types.Message, state: FSMContext):
             )
             
             try:
-                first_name = (await bot.get_chat(u_id)).first_name or "User"
                 await bot.send_message(
                     u_id, 
                     f"{comp_text}\n\n👇 **Main Menu:**", 
-                    reply_markup=get_main_menu(first_name),
+                    reply_markup=get_main_menu(),
                     parse_mode="Markdown"
                 )
                 
