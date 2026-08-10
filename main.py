@@ -41,27 +41,22 @@ DEFAULT_SERVICES = {
         "title": "🔹 [ 🤖 Bot Followers ]\n*(Low Speed ⏰ | No refill 🚫 | Delivery Time: {time})*",
         "delivery_time": "2 Hours and 45 Minutes",
         "plans": [
-            {"qty": "1000", "price": 49, "text": "🤖 1k Bot — ₹{price}"},
-            {"qty": "2000", "price": 79, "text": "🤖 2k Bot — ₹{price}"},
-            {"qty": "3000", "price": 100, "text": "🤖 3k Bot — ₹{price}"},
+            {"qty": "1000", "price": 30, "text": "🤖 1k Bot — ₹{price}"},
+            {"qty": "2000", "price": 60, "text": "🤖 2k Bot — ₹{price}"},
+            {"qty": "3000", "price": 90, "text": "🤖 3k Bot — ₹{price}"},
             {"qty": "4000", "price": 120, "text": "🤖 4k Bot — ₹{price}"},
-            {"qty": "5000", "price": 140, "text": "🤖 5k Bot — ₹{price}"},
-            {"qty": "6000", "price": 160, "text": "🤖 6k Bot — ₹{price}"},
-            {"qty": "7000", "price": 180, "text": "🤖 7k Bot — ₹{price}"},
-            {"qty": "8000", "price": 200, "text": "🤖 8k Bot — ₹{price}"},
-            {"qty": "9000", "price": 220, "text": "🤖 9k Bot — ₹{price}"},
-            {"qty": "10000", "price": 250, "text": "🤖 10k Bot — ₹{price}"}
+            {"qty": "5000", "price": 150, "text": "🤖 5k Bot — ₹{price}"}
         ]
     },
     "real": {
         "title": "🔹 [ 🔥 Real Followers ]\n*(Fast Delivery ⏰ | Refill 💵 | Delivery Time: {time})*",
         "delivery_time": "7 Hours and 8 Minutes",
         "plans": [
-            {"qty": "1000", "price": 100, "text": "🔥 1k Real — ₹{price}"},
-            {"qty": "2000", "price": 145, "text": "🔥 2k Real — ₹{price}"},
-            {"qty": "3000", "price": 195, "text": "🔥 3k Real — ₹{price}"},
-            {"qty": "4000", "price": 245, "text": "🔥 4k Real — ₹{price}"},
-            {"qty": "5000", "price": 290, "text": "🔥 5k Real — ₹{price}"}
+            {"qty": "1000", "price": 55, "text": "🔥 1k Real — ₹{price}"},
+            {"qty": "2000", "price": 110, "text": "🔥 2k Real — ₹{price}"},
+            {"qty": "3000", "price": 165, "text": "🔥 3k Real — ₹{price}"},
+            {"qty": "4000", "price": 220, "text": "🔥 4k Real — ₹{price}"},
+            {"qty": "5000", "price": 275, "text": "🔥 5k Real — ₹{price}"}
         ]
     },
     "likes": {
@@ -69,17 +64,19 @@ DEFAULT_SERVICES = {
         "delivery_time": "3 Hours and 18 Minutes",
         "plans": [
             {"qty": "1000", "price": 8, "text": "❤️ 1000 Likes — ₹{price}"},
-            {"qty": "2000", "price": 13, "text": "❤️ 2000 Likes — ₹{price}"},
-            {"qty": "3000", "price": 18, "text": "❤️ 3000 Likes — ₹{price}"},
-            {"qty": "4000", "price": 23, "text": "❤️ 4000 Likes — ₹{price}"},
-            {"qty": "5000", "price": 28, "text": "❤️ 5000 Likes — ₹{price}"},
-            {"qty": "6000", "price": 33, "text": "❤️ 6000 Likes — ₹{price}"},
-            {"qty": "7000", "price": 38, "text": "❤️ 7000 Likes — ₹{price}"},
-            {"qty": "8000", "price": 43, "text": "❤️ 8000 Likes — ₹{price}"},
-            {"qty": "9000", "price": 48, "text": "❤️ 9000 Likes — ₹{price}"},
-            {"qty": "10000", "price": 60, "text": "❤️ 10000 Likes — ₹{price}"}
+            {"qty": "2000", "price": 16, "text": "❤️ 2000 Likes — ₹{price}"},
+            {"qty": "3000", "price": 24, "text": "❤️ 3000 Likes — ₹{price}"},
+            {"qty": "4000", "price": 32, "text": "❤️ 4000 Likes — ₹{price}"},
+            {"qty": "5000", "price": 40, "text": "❤️ 5000 Likes — ₹{price}"}
         ]
     }
+}
+
+# Dynamic Custom Limits & Names
+CUSTOM_LIMITS = {
+    "bot": {"min": 500, "max": 100000, "name": "🤖 Bot Followers"},
+    "real": {"min": 500, "max": 100000, "name": "🔥 Real Followers"},
+    "likes": {"min": 1000, "max": 100000, "name": "❤️ Likes"}
 }
 
 def load_services():
@@ -97,7 +94,15 @@ def save_services(data):
 
 SERVICES_DATA = load_services()
 
-# --- Flask Server for 24/7 Uptime ---
+# 1K-ന്റെ തത്സമയ റേറ്റ് കണ്ടുപിടിക്കുന്ന ഫംഗ്ഷൻ (Dynamic Rate Fetcher)
+def get_1k_rate(s_type):
+    try:
+        return SERVICES_DATA[s_type]['plans'][0]['price']
+    except Exception:
+        fallback = {"bot": 30, "real": 55, "likes": 8}
+        return fallback.get(s_type, 30)
+
+# --- Flask Server ---
 app = Flask('')
 @app.route('/')
 def home(): 
@@ -117,7 +122,7 @@ def keep_alive():
 # --- Configurations ---
 bot = Bot(token="8642149587:AAGCDZqRoYxFAGGMKjLAAQZQG0S_BGdfQGw")
 ADMIN_ID = 7616127905
-QR_URL = 'https://ibb.co/kg2jT6ZF'
+QR_URL = 'https://ibb.co/jdffT3p'  # Updated New QR Code URL
 PAYMENT_PROOF_CHANNEL = 'https://t.me/+hLxD0623ZEs1M2I1'
 
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -126,6 +131,7 @@ storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 
 class OrderStates(StatesGroup):
+    wait_custom_qty = State()
     wait_screenshot = State()
     wait_url = State()
     wait_admin_time = State()
@@ -163,6 +169,50 @@ def get_welcome_text(first_name):
         "═══════════════════════\n\n"
         f"👋 Welcome to our official store bot, **{first_name}**!\n\n"
         "👇 Select an option from below:"
+    )
+
+def get_custom_keypad():
+    kb = InlineKeyboardMarkup(row_width=3)
+    kb.add(
+        InlineKeyboardButton("1", callback_data="kpad_1"),
+        InlineKeyboardButton("2", callback_data="kpad_2"),
+        InlineKeyboardButton("3", callback_data="kpad_3"),
+        InlineKeyboardButton("4", callback_data="kpad_4"),
+        InlineKeyboardButton("5", callback_data="kpad_5"),
+        InlineKeyboardButton("6", callback_data="kpad_6"),
+        InlineKeyboardButton("7", callback_data="kpad_7"),
+        InlineKeyboardButton("8", callback_data="kpad_8"),
+        InlineKeyboardButton("9", callback_data="kpad_9"),
+        InlineKeyboardButton("❌ CLEAR", callback_data="kpad_clear"),
+        InlineKeyboardButton("0", callback_data="kpad_0"),
+        InlineKeyboardButton("🔙 BACK", callback_data="back_to_shop")
+    )
+    kb.add(InlineKeyboardButton("✅ CONFIRM ORDER", callback_data="kpad_confirm"))
+    return kb
+
+def get_custom_calc_text(s_type, qty):
+    cfg = CUSTOM_LIMITS[s_type]
+    rate_1k = get_1k_rate(s_type)
+    unit_price = rate_1k / 1000.0
+    total_price = round(qty * unit_price, 2)
+    
+    formatted_qty = f"{qty:,}"
+    return (
+        "┌──────────────────────────────────────────┐\n"
+        "│       ✏️ **CUSTOM QUANTITY CALCULATOR**       │\n"
+        "├──────────────────────────────────────────┤\n"
+        "│                                          │\n"
+        f"│ 📌 **Service** : {cfg['name']}\n"
+        f"│ 💰 **Rate**    : ₹{rate_1k} per 1,000\n"
+        "│                                          │\n"
+        "│ ┌───────────────────┬──────────────────┐ │\n"
+        f"│ │ 📦 **QUANTITY**    │ 💵 **TOTAL PRICE**│ │\n"
+        f"│ │ {formatted_qty:<17} │ ₹{total_price:<15.2f}│ │\n"
+        "│ └───────────────────┴──────────────────┘ │\n"
+        "│                                          │\n"
+        f"│ 📌 **Min Limit**: {cfg['min']:,}  |  **Max Limit**: {cfg['max']:,}\n"
+        "└──────────────────────────────────────────┘\n\n"
+        "👇 *Use the Keypad below to enter Quantity:*"
     )
 
 # --- Start Command ---
@@ -242,7 +292,7 @@ async def how_to_use_handler(cq: types.CallbackQuery):
         "🎬 **HOW TO USE THE BOT**\n\n"
         "1️⃣ Tap on **🛒 Shop Now**.\n"
         "2️⃣ Select your desired service (Followers / Likes).\n"
-        "3️⃣ Select a package/plan.\n"
+        "3️⃣ Select a plan or use **✏️ Custom Quantity**.\n"
         "4️⃣ Scan the QR code and make payment.\n"
         "5️⃣ Send the payment screenshot to the bot.\n"
         "6️⃣ Send your Instagram account link.\n\n"
@@ -289,10 +339,11 @@ async def show_service_plans(cq: types.CallbackQuery):
             btn_text = plan['text'].format(price=plan['price'])
             kb.add(InlineKeyboardButton(btn_text, callback_data=f"plan_{s_type}_{idx}"))
             
+        kb.add(InlineKeyboardButton("✏️ Custom Quantity", callback_data=f"custom_{s_type}"))
         kb.add(InlineKeyboardButton("🔙 Back to Shop", callback_data="back_to_shop"))
         
         title_text = s_info['title'].format(time=s_info.get('delivery_time', 'Standard'))
-        caption_text = f"{title_text}\n\n**Choose a plan 📥**"
+        caption_text = f"{title_text}\n\n**Choose a plan or enter Custom Quantity 📥**"
         
         try:
             await cq.message.edit_text(caption_text, reply_markup=kb, parse_mode="Markdown")
@@ -300,6 +351,128 @@ async def show_service_plans(cq: types.CallbackQuery):
             await bot.send_message(cq.from_user.id, caption_text, reply_markup=kb, parse_mode="Markdown")
     except Exception as e:
         print(f"Error in show_service_plans: {e}")
+
+# --- Custom Quantity Mode ---
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith('custom_'), state='*')
+async def start_custom_quantity(cq: types.CallbackQuery, state: FSMContext):
+    try:
+        await cq.answer()
+        s_type = cq.data.split('_')[1]
+        
+        await OrderStates.wait_custom_qty.set()
+        await state.update_data(service=s_type, custom_qty=0)
+        
+        calc_text = get_custom_calc_text(s_type, 0)
+        await cq.message.edit_text(calc_text, reply_markup=get_custom_keypad(), parse_mode="Markdown")
+    except Exception as e:
+        print(f"Error in start_custom_quantity: {e}")
+
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith('kpad_'), state=OrderStates.wait_custom_qty)
+async def process_keypad_input(cq: types.CallbackQuery, state: FSMContext):
+    try:
+        action = cq.data.split('_')[1]
+        data = await state.get_data()
+        s_type = data.get('service', 'bot')
+        current_qty = data.get('custom_qty', 0)
+        cfg = CUSTOM_LIMITS[s_type]
+
+        if action.isdigit():
+            digit = int(action)
+            new_qty = (current_qty * 10) + digit
+            if new_qty > cfg['max']:
+                await cq.answer(f"⚠️ Maximum limit is {cfg['max']:,}!", show_alert=True)
+                return
+            await state.update_data(custom_qty=new_qty)
+            await cq.answer()
+            await cq.message.edit_text(get_custom_calc_text(s_type, new_qty), reply_markup=get_custom_keypad(), parse_mode="Markdown")
+
+        elif action == "clear":
+            await state.update_data(custom_qty=0)
+            await cq.answer("Cleared!")
+            await cq.message.edit_text(get_custom_calc_text(s_type, 0), reply_markup=get_custom_keypad(), parse_mode="Markdown")
+
+        elif action == "confirm":
+            if current_qty < cfg['min']:
+                await cq.answer(f"⚠️ Minimum quantity allowed is {cfg['min']:,}!", show_alert=True)
+                return
+            
+            rate_1k = get_1k_rate(s_type)
+            unit_price = rate_1k / 1000.0
+            price = round(current_qty * unit_price, 2)
+
+            await OrderStates.wait_screenshot.set()
+            await state.update_data(service=s_type, quantity=str(current_qty), price=price)
+            await cq.answer()
+            await start_payment_session(cq.from_user.id, s_type, str(current_qty), price)
+
+    except Exception as e:
+        print(f"Error in process_keypad_input: {e}")
+
+async def start_payment_session(chat_id, s_type, qty, price):
+    qr_kb = InlineKeyboardMarkup(row_width=1)
+    qr_kb.add(InlineKeyboardButton("🔙 Back to Shop", callback_data="back_to_shop"))
+
+    initial_caption = (
+        f"📦 **Quantity:** {qty}\n"
+        f"💰 **Amount to Pay:** ₹{price}\n\n"
+        f"📲 Please scan the QR code above for payment.\n\n"
+        f"📍 **Step 1:** Send your **Payment Screenshot** first.\n"
+        f"📍 **Step 2:** Send your **Instagram URL** after.\n\n"
+        "⏳ Time Remaining: 05:00"
+    )
+    
+    try:
+        qr_msg = await bot.send_photo(chat_id, QR_URL, caption=initial_caption, reply_markup=qr_kb, parse_mode="Markdown")
+    except Exception:
+        qr_msg = await bot.send_message(chat_id, initial_caption, reply_markup=qr_kb, parse_mode="Markdown")
+
+    async def live_countdown_timer(c_id, message_id):
+        for remaining in range(299, -1, -1):
+            await asyncio.sleep(1)
+            try:
+                current_state = await dp.current_state(user=c_id).get_state()
+                if current_state != 'OrderStates:wait_screenshot':
+                    return
+                
+                if remaining % 5 == 0 or remaining < 10:
+                    mins, secs = divmod(remaining, 60)
+                    time_str = f"{mins:02d}:{secs:02d}"
+                    data_dict = await dp.current_state(user=c_id).get_data()
+                    q_val = data_dict.get('quantity', qty)
+                    p_val = data_dict.get('price', price)
+                    updated_caption = (
+                        f"📦 **Quantity:** {q_val}\n"
+                        f"💰 **Amount to Pay:** ₹{p_val}\n\n"
+                        f"📲 Please scan the QR code above for payment.\n\n"
+                        f"📍 **Step 1:** Send your **Payment Screenshot** first.\n"
+                        f"📍 **Step 2:** Send your **Instagram URL** after.\n\n"
+                        f"⏳ Time Remaining: {time_str}"
+                    )
+                    try:
+                        await bot.edit_message_caption(chat_id=c_id, message_id=message_id, caption=updated_caption, reply_markup=qr_kb, parse_mode="Markdown")
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+        
+        try:
+            current_state = await dp.storage.get_state(chat=c_id, user=c_id)
+            if current_state == 'OrderStates:wait_screenshot':
+                await dp.storage.finish(chat=c_id, user=c_id)
+                try:
+                    await bot.delete_message(chat_id=c_id, message_id=message_id)
+                except Exception:
+                    pass
+                await bot.send_message(
+                    c_id,
+                    "⚠️ **Time expired!** The QR code session has ended. Please start again from the menu.",
+                    reply_markup=get_main_menu(),
+                    parse_mode="Markdown"
+                )
+        except Exception:
+            pass
+
+    asyncio.create_task(live_countdown_timer(chat_id, qr_msg.message_id))
 
 # --- Plan Selection & Timer ---
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('plan_'), state='*')
@@ -316,71 +489,8 @@ async def select_plan_handler(cq: types.CallbackQuery, state: FSMContext):
         
         await OrderStates.wait_screenshot.set()
         await state.update_data(service=s_type, quantity=qty, price=price)
-        
-        qr_kb = InlineKeyboardMarkup(row_width=1)
-        qr_kb.add(InlineKeyboardButton("🔙 Back to Shop", callback_data="back_to_shop"))
+        await start_payment_session(cq.from_user.id, s_type, qty, price)
 
-        initial_caption = (
-            f"📦 **Quantity:** {qty}\n"
-            f"💰 **Amount to Pay:** ₹{price}\n\n"
-            f"📲 Please scan the QR code above for payment.\n\n"
-            f"📍 **Step 1:** Send your **Payment Screenshot** first.\n"
-            f"📍 **Step 2:** Send your **Instagram URL** after.\n\n"
-            "⏳ Time Remaining: 05:00"
-        )
-        
-        try:
-            qr_msg = await bot.send_photo(cq.from_user.id, QR_URL, caption=initial_caption, reply_markup=qr_kb, parse_mode="Markdown")
-        except Exception:
-            qr_msg = await bot.send_message(cq.from_user.id, initial_caption, reply_markup=qr_kb, parse_mode="Markdown")
-
-        async def live_countdown_timer(chat_id, message_id):
-            for remaining in range(299, -1, -1):
-                await asyncio.sleep(1)
-                try:
-                    current_state = await dp.current_state(user=chat_id).get_state()
-                    if current_state != 'OrderStates:wait_screenshot':
-                        return
-                    
-                    if remaining % 5 == 0 or remaining < 10:
-                        mins, secs = divmod(remaining, 60)
-                        time_str = f"{mins:02d}:{secs:02d}"
-                        data_dict = await dp.current_state(user=chat_id).get_data()
-                        q_val = data_dict.get('quantity', qty)
-                        p_val = data_dict.get('price', price)
-                        updated_caption = (
-                            f"📦 **Quantity:** {q_val}\n"
-                            f"💰 **Amount to Pay:** ₹{p_val}\n\n"
-                            f"📲 Please scan the QR code above for payment.\n\n"
-                            f"📍 **Step 1:** Send your **Payment Screenshot** first.\n"
-                            f"📍 **Step 2:** Send your **Instagram URL** after.\n\n"
-                            f"⏳ Time Remaining: {time_str}"
-                        )
-                        try:
-                            await bot.edit_message_caption(chat_id=chat_id, message_id=message_id, caption=updated_caption, reply_markup=qr_kb, parse_mode="Markdown")
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
-            
-            try:
-                current_state = await dp.storage.get_state(chat=chat_id, user=chat_id)
-                if current_state == 'OrderStates:wait_screenshot':
-                    await dp.storage.finish(chat=chat_id, user=chat_id)
-                    try:
-                        await bot.delete_message(chat_id=chat_id, message_id=message_id)
-                    except Exception:
-                        pass
-                    await bot.send_message(
-                        chat_id,
-                        "⚠️ **Time expired!** The QR code session has ended. Please start again from the menu.",
-                        reply_markup=get_main_menu(),
-                        parse_mode="Markdown"
-                    )
-            except Exception:
-                pass
-
-        asyncio.create_task(live_countdown_timer(cq.from_user.id, qr_msg.message_id))
     except Exception as e:
         print(f"Error in select_plan_handler: {e}")
 
@@ -520,7 +630,7 @@ async def set_price_cmd(msg: types.Message):
 
     args = msg.get_args().split()
     if len(args) < 3:
-        await msg.reply("⚠️ **Usage:** `/setprice <category> <index> <new_price>`\nExample: `/setprice bot 0 55`", parse_mode="Markdown")
+        await msg.reply("⚠️ **Usage:** `/setprice <category> <index> <new_price>`\nExample: `/setprice bot 0 40`", parse_mode="Markdown")
         return
 
     cat, idx, new_price = args[0].lower(), int(args[1]), int(args[2])
@@ -528,7 +638,7 @@ async def set_price_cmd(msg: types.Message):
     if cat in SERVICES_DATA and idx < len(SERVICES_DATA[cat]['plans']):
         SERVICES_DATA[cat]['plans'][idx]['price'] = new_price
         save_services(SERVICES_DATA)
-        await msg.reply(f"✅ **Price updated successfully!**\n{cat.capitalize()} plan #{idx} price changed to ₹{new_price}", parse_mode="Markdown")
+        await msg.reply(f"✅ **Price updated successfully!**\n{cat.capitalize()} plan #{idx} price changed to ₹{new_price}.\n\n*(Note: Custom Calculator will now use this new rate automatically!)*", parse_mode="Markdown")
     else:
         await msg.reply("❌ Invalid category or plan index.", parse_mode="Markdown")
 
@@ -706,6 +816,12 @@ async def get_admin_time(msg: types.Message, state: FSMContext):
         print(f"Error in get_admin_time: {e}")
 
 # --- Forward Support Messages ---
+@dp.message_handler(state=OrderStates.wait_admin_time, content_types=types.ContentTypes.ANY)
+async def fallback_admin_time(msg: types.Message, state: FSMContext):
+    if msg.from_user.id == ADMIN_ID and msg.text and msg.text.startswith('/'):
+        await state.finish()
+        await global_message_handler(msg)
+
 @dp.message_handler(state=OrderStates.in_support, content_types=types.ContentTypes.ANY)
 async def customer_support_message(msg: types.Message):
     try:
@@ -784,3 +900,4 @@ if __name__ == '__main__':
             print(f"Crash prevented: {e}. Auto-restarting in 1 second...")
             import time
             time.sleep(1)
+
